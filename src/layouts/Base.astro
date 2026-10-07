@@ -1,0 +1,46 @@
+---
+import "../styles/global.css";
+import "../styles/showcase.css";
+import { site } from "../data/photos.js";
+
+const { title, description, image, type = "website" } = Astro.props;
+const pageTitle = title ? `${title} — ${site.title}` : site.title;
+const desc = description || site.tagline;
+const social = image ? new URL(image, Astro.site) : undefined;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+
+    <title>{pageTitle}</title>
+    <meta name="description" content={desc} />
+    <meta name="author" content={site.author} />
+    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
+
+    <!-- Link previews for Discord, LINE, X, iMessage -->
+    <meta property="og:type" content={type} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={desc} />
+    <meta property="og:site_name" content={site.title} />
+    {social && <meta property="og:image" content={social} />}
+    <meta name="twitter:card" content={social ? "summary_large_image" : "summary"} />
+    {social && <meta name="twitter:image" content={social} />}
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Inter:wght@400;500;600&family=Noto+Serif+JP:wght@300;400&display=swap"
+    />
+  </head>
+
+  <body>
+    <slot />
+  </body>
+</html>

@@ -1,0 +1,14 @@
+---
+import Base from "../layouts/Base.astro";
+import { exhibition } from "../data/photos.js";
+import Showcase from "../components/Showcase.jsx";
+import TopBar from "../components/TopBar.jsx";
+import { loadGallery } from "../lib/gallery.js";
+
+const { hero, sections, site, photos } = await loadGallery();
+---
+
+<Base image={photos[0]?.full.src}>
+  <TopBar client:load site={site} sections={sections} />
+<Showcase client:load hero={hero} sections={sections} site={site} exhibition={exhibition} />
+</Base>

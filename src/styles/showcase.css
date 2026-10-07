@@ -1,0 +1,948 @@
+/* ===========================================================================
+   TOP MENU BAR
+   =========================================================================== */
+
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.125rem var(--gutter);
+  /* Transparent over the opening screen; the border only appears with the
+     background, so there is no line floating across the hero. */
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition: background 500ms ease, border-color 500ms ease;
+}
+
+.topbar--solid {
+  background: rgba(10, 10, 10, 0.72);
+  border-bottom-color: var(--line);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
+
+.topbar__mark {
+  font-size: 1.25rem;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  white-space: nowrap;
+  /* Digits must read as digits — see the note in global.css */
+  font-variant-numeric: lining-nums proportional-nums;
+  font-feature-settings: "lnum" 1;
+}
+
+.topbar__albums {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-shrink: 0;
+}
+
+.topbar__link {
+  color: var(--ink-faint);
+  white-space: nowrap;
+  transition: color 250ms ease;
+}
+
+.topbar__link:hover {
+  color: var(--ink);
+}
+
+.topbar__link--accent:hover {
+  color: var(--accent);
+}
+
+/* The two things a visitor might actually click through to. Brighter and
+   larger than the album index, which is navigation rather than action. */
+.topbar__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  letter-spacing: 0.14em;
+  color: var(--ink);
+  white-space: nowrap;
+  transition: color 250ms ease, opacity 250ms ease;
+}
+
+.topbar__cta:hover {
+  color: var(--accent);
+}
+
+.topbar__cta svg {
+  width: 1.0625rem;
+  height: 1.0625rem;
+  flex-shrink: 0;
+}
+
+@media (max-width: 460px) {
+  .topbar__cta {
+    font-size: 0.6875rem;
+    gap: 0.375rem;
+  }
+  .topbar__cta svg {
+    width: 0.9375rem;
+    height: 0.9375rem;
+  }
+}
+
+/* Album names are the first thing to go on a narrow screen — the wordmark,
+   Shop, and Instagram matter more than a full index. */
+@media (max-width: 900px) {
+  .topbar__albums {
+    display: none;
+  }
+}
+
+@media (max-width: 460px) {
+  .topbar {
+    gap: 1rem;
+    padding: 1rem var(--gutter);
+  }
+  .topbar__right {
+    gap: 1rem;
+  }
+}
+
+/* ===========================================================================
+   OPENING SCREEN
+   =========================================================================== */
+
+.hero {
+  position: relative;
+  height: 100svh;
+  min-height: 34rem;
+  overflow: hidden;
+}
+
+.hero__field {
+  position: absolute;
+  /* Starts below the menu bar so no photograph ever crowds it. Every slot
+     position is a percentage of this box, so one number moves them all. */
+  inset: 7rem 0 0 0;
+}
+
+.hero__slot {
+  position: absolute;
+  aspect-ratio: 3 / 4;
+}
+
+.hero__para {
+  display: block;
+  width: 100%;
+  height: 100%;
+  will-change: transform;
+}
+
+.hero__slot--small {
+  aspect-ratio: 4 / 3;
+}
+
+.slot {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: calc(var(--radius) - 2px);
+  background: var(--surface);
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 20px 50px -30px rgba(0, 0, 0, 0.9);
+}
+
+.slot__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.slot__img--in {
+  animation: slot-in 1400ms ease-out forwards;
+}
+
+.slot__img--out {
+  animation: slot-out 1400ms ease-out forwards;
+}
+
+@keyframes slot-in {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slot-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.hero__center {
+  position: absolute;
+  will-change: transform, opacity;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0 var(--gutter);
+  text-align: center;
+  pointer-events: none;
+  /* Keeps the title legible whatever photographs land behind it */
+  background: radial-gradient(
+    ellipse 46% 34% at 50% 50%,
+    rgba(10, 10, 10, 0.94) 0%,
+    rgba(10, 10, 10, 0.72) 55%,
+    transparent 100%
+  );
+}
+
+.hero__title {
+  margin: 0;
+  /* The vw factor is deliberately modest: a title that grows too fast on
+     mid-size screens crowds the ring of photographs around it. */
+  font-size: clamp(2rem, 5.2vw, 5.25rem);
+  line-height: 1.04;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  max-width: 15ch;
+}
+
+.hero__welcome {
+  margin: 0;
+  font-size: clamp(1rem, 2.2vw, 1.75rem);
+  font-style: italic;
+  color: var(--ink-dim);
+  letter-spacing: 0.06em;
+}
+
+.hero__scroll {
+  position: absolute;
+  left: 50%;
+  bottom: 2rem;
+  transform: translateX(-50%);
+  color: var(--ink-faint);
+  animation: breathe 3.4s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translate(-50%, 0);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, 5px);
+  }
+}
+
+/* ===========================================================================
+   ALBUMS
+   =========================================================================== */
+
+.reel {
+  padding: 9rem var(--gutter) 0;
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 1100ms ease-out, transform 1100ms var(--ease);
+}
+
+.reel--shown {
+  opacity: 1;
+  transform: none;
+}
+
+.reel__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.625rem;
+  margin-bottom: 3.25rem;
+}
+
+/* A short hairline under each heading — the one piece of ornament on the
+   page, and what makes an album read as a titled chapter. */
+.reel__head::after {
+  content: "";
+  width: 2.75rem;
+  height: 1px;
+  margin-top: 1rem;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--line-bright),
+    transparent
+  );
+}
+
+.reel__title {
+  margin: 0;
+  font-size: clamp(1.875rem, 4vw, 3.25rem);
+  color: var(--ink);
+}
+
+.reel__sub {
+  color: var(--ink-faint);
+  font-size: 0.625rem;
+}
+
+.reel__window {
+  position: relative;
+  overflow: hidden;
+}
+
+.reel__track {
+  display: flex;
+  gap: 12px;
+  will-change: transform;
+}
+
+.frame {
+  position: relative;
+  flex: 0 0 auto;
+  /* Change this ratio to crop the row differently */
+  aspect-ratio: 4 / 5;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+  cursor: pointer;
+  /* A hairline catches the light at the edge; the deep shadow lifts the card
+     off the background without ever looking like a drop shadow. */
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 18px 40px -28px rgba(0, 0, 0, 0.95);
+  transition: transform 700ms var(--ease), box-shadow 700ms var(--ease);
+}
+
+.frame:hover {
+  transform: translateY(-8px);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.13),
+    0 40px 70px -30px rgba(0, 0, 0, 1);
+}
+
+.frame__para {
+  position: absolute;
+  /* Oversized on purpose: the drift must never expose an edge */
+  inset: -9% 0;
+  display: block;
+  will-change: transform;
+}
+
+.frame__blur,
+.frame__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.frame__blur {
+  transform: scale(1.1);
+  filter: blur(12px);
+}
+
+.frame__img {
+  transition: opacity var(--fade) ease-out, transform var(--fade) var(--ease);
+}
+
+.frame__caption {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 3rem 1.125rem 1rem;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  background: linear-gradient(to top, rgba(10, 10, 10, 0.92), transparent);
+  opacity: 0;
+  transition: opacity 300ms ease;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.frame:hover .frame__caption {
+  opacity: 1;
+}
+
+.reel__arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  padding: 1.25rem 0.75rem;
+  border: 0;
+  background: linear-gradient(to right, rgba(10, 10, 10, 0.75), transparent);
+  color: var(--ink);
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 250ms ease;
+}
+
+.reel__arrow--prev {
+  left: 0;
+}
+
+.reel__arrow--next {
+  right: 0;
+  background: linear-gradient(to left, rgba(10, 10, 10, 0.75), transparent);
+}
+
+.reel__window:hover .reel__arrow,
+.reel__arrow:focus-visible {
+  opacity: 1;
+}
+
+/* ===========================================================================
+   EMPTY STATE
+   =========================================================================== */
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100svh;
+  padding: var(--gutter);
+}
+
+.empty__line {
+  max-width: 30rem;
+  text-align: center;
+  font-size: 1.375rem;
+  color: var(--ink-dim);
+}
+
+.empty code {
+  font-family: var(--ui);
+  font-size: 0.9375rem;
+  color: var(--accent);
+}
+
+/* ===========================================================================
+   LIGHTBOX
+   =========================================================================== */
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  animation: box-in 220ms ease-out;
+}
+
+@keyframes box-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.lightbox__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem var(--gutter);
+  border-bottom: 1px solid var(--line);
+}
+
+.lightbox__close {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-family: var(--ui);
+  font-size: 1rem;
+  color: var(--ink-faint);
+  transition: color 200ms ease;
+}
+
+.lightbox__close:hover {
+  color: var(--ink);
+}
+
+.lightbox__stage {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 0;
+  padding: 1.5rem 0.5rem;
+}
+
+.lightbox__img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--radius);
+}
+
+.lightbox__nav {
+  flex-shrink: 0;
+  padding: 1rem 0.75rem;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: 1.75rem;
+  line-height: 1;
+  color: var(--ink-faint);
+  transition: color 200ms ease;
+}
+
+.lightbox__nav:hover {
+  color: var(--ink);
+}
+
+.lightbox__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem var(--gutter);
+  border-top: 1px solid var(--line);
+}
+
+.lightbox__title {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--ink);
+}
+
+.lightbox__caption {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: var(--ink-dim);
+}
+
+.lightbox__permalink {
+  color: var(--ink-faint);
+  transition: color 200ms ease;
+}
+
+.lightbox__permalink:hover {
+  color: var(--accent);
+}
+/* ===========================================================================
+   FILM GRAIN
+   A faint noise layer over everything. Large flat blacks look like empty
+   digital void without it; with it they read as film. Sits above the lightbox
+   so nothing on the site escapes the texture, and never intercepts a click.
+   =========================================================================== */
+
+body::after {
+  content: "";
+  position: fixed;
+  /* Only as oversized as the drift below requires — a bigger box would mean
+     repainting several screens' worth of noise six times a second. */
+  inset: -10%;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.035;
+  will-change: transform;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grain 720ms steps(6) infinite;
+}
+
+@keyframes grain {
+  0%   { transform: translate(0, 0); }
+  16%  { transform: translate(-2%, 1%); }
+  33%  { transform: translate(1%, -2%); }
+  50%  { transform: translate(-1%, 2%); }
+  66%  { transform: translate(2%, 1%); }
+  83%  { transform: translate(1%, -1%); }
+  100% { transform: translate(0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::after {
+    animation: none;
+  }
+}
+
+/* ===========================================================================
+   LOADING SCREEN — a lens finding focus
+   =========================================================================== */
+
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3rem;
+  background: var(--bg);
+  transition: opacity 850ms ease, visibility 850ms;
+}
+
+.loader--out {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.loader__focus {
+  position: relative;
+  padding: 2.75rem 3.5rem;
+}
+
+.loader__mark {
+  display: block;
+  font-size: clamp(1.75rem, 5vw, 3.25rem);
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  font-variant-numeric: lining-nums proportional-nums;
+  font-feature-settings: "lnum" 1;
+  /* The rack: out of focus, then sharp. */
+  animation: rack 1500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes rack {
+  0% {
+    filter: blur(16px);
+    opacity: 0;
+    transform: scale(1.07);
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    filter: blur(0);
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Four corner brackets, drawing in like a viewfinder's focus box */
+.loader__bracket {
+  position: absolute;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid var(--accent);
+  opacity: 0;
+  animation: bracket 1300ms cubic-bezier(0.16, 1, 0.3, 1) 220ms forwards;
+}
+
+.loader__bracket--tl {
+  top: 0;
+  left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  --dx: -14px;
+  --dy: -14px;
+}
+.loader__bracket--tr {
+  top: 0;
+  right: 0;
+  border-left: 0;
+  border-bottom: 0;
+  --dx: 14px;
+  --dy: -14px;
+}
+.loader__bracket--bl {
+  bottom: 0;
+  left: 0;
+  border-right: 0;
+  border-top: 0;
+  --dx: -14px;
+  --dy: 14px;
+}
+.loader__bracket--br {
+  bottom: 0;
+  right: 0;
+  border-left: 0;
+  border-top: 0;
+  --dx: 14px;
+  --dy: 14px;
+}
+
+@keyframes bracket {
+  0% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy));
+  }
+  100% {
+    opacity: 0.75;
+    transform: translate(0, 0);
+  }
+}
+
+/* A hairline that fills, so the wait has a visible end */
+.loader__meter {
+  width: min(11rem, 42vw);
+  height: 1px;
+  background: var(--line-bright);
+  transform-origin: left center;
+  animation: meter 2200ms cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+
+@keyframes meter {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ===========================================================================
+   CLOSING PANEL
+   =========================================================================== */
+
+.ending {
+  margin-top: 10rem;
+  padding: 8rem var(--gutter) 5rem;
+  border-top: 1px solid var(--line);
+}
+
+.ending__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  text-align: center;
+}
+
+.ending__mark {
+  margin: 0;
+  font-size: clamp(2.5rem, 8vw, 6rem);
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  font-variant-numeric: lining-nums proportional-nums;
+  font-feature-settings: "lnum" 1;
+}
+
+.ending__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2rem;
+}
+
+.ending__link {
+  color: var(--ink-dim);
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid transparent;
+  transition: color 250ms ease, border-color 250ms ease;
+}
+
+.ending__link:hover {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+.ending__top {
+  color: var(--ink-faint);
+  transition: color 250ms ease;
+}
+
+.ending__top:hover {
+  color: var(--ink);
+}
+
+.ending__credit {
+  margin: 0;
+  color: var(--ink-faint);
+  letter-spacing: 0.16em;
+}
+/* ===========================================================================
+   EXHIBITION — a scroll-pinned sequence
+   The section is tall; the stage inside sticks while you scroll through it.
+   =========================================================================== */
+
+.exhibit {
+  position: relative;
+  /* This height is the length of the sequence. Longer means each phase is
+     spread over more scrolling and feels slower. */
+  height: 340vh;
+  margin-top: 10rem;
+  --exhibit-red: #d9482f;
+}
+
+.exhibit__stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 5rem var(--gutter) 3rem;
+}
+
+.exhibit__grid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(1rem, 4vw, 4rem);
+  width: 100%;
+  max-width: 78rem;
+  height: 100%;
+}
+
+.exhibit__middle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.875rem;
+  min-height: 0;
+  height: 100%;
+  justify-content: center;
+}
+
+.exhibit__title {
+  margin: 0;
+  font-size: clamp(1.5rem, 3.4vw, 3rem);
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  opacity: 0;
+  font-variant-numeric: lining-nums proportional-nums;
+  font-feature-settings: "lnum" 1;
+  will-change: transform, opacity;
+}
+
+.exhibit__poster {
+  margin: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  will-change: transform, opacity, filter;
+}
+
+.exhibit__poster img {
+  max-height: 100%;
+  max-width: 100%;
+  width: auto;
+  object-fit: contain;
+  border-radius: calc(var(--radius) - 4px);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 40px 80px -40px rgba(0, 0, 0, 1);
+}
+
+.exhibit__tagline {
+  margin: 0;
+  font-style: italic;
+  font-size: clamp(0.9375rem, 1.6vw, 1.375rem);
+  color: var(--exhibit-red);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.exhibit__venue {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.exhibit__venueName {
+  font-size: clamp(1.125rem, 2.2vw, 1.75rem);
+  color: var(--ink);
+}
+
+.exhibit__place {
+  color: var(--exhibit-red);
+  letter-spacing: 0.2em;
+}
+
+.exhibit__cta {
+  color: var(--ink-faint);
+  transition: color 250ms ease;
+}
+
+.exhibit__cta:hover {
+  color: var(--ink);
+}
+
+/* The two vertical rails, set the way they run on the printed poster */
+.exhibit__dates,
+.exhibit__kind {
+  margin: 0;
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+  letter-spacing: 0.3em;
+  font-size: clamp(0.625rem, 1.05vw, 0.8125rem);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.exhibit__dates {
+  color: var(--ink-dim);
+}
+
+.exhibit__kind {
+  color: var(--exhibit-red);
+  transform: rotate(180deg);
+}
+
+/* On a phone the rails would squeeze the poster to nothing, so the whole
+   thing stacks and the vertical type lies flat. */
+@media (max-width: 780px) {
+  .exhibit {
+    height: 300vh;
+  }
+  .exhibit__grid {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .exhibit__dates,
+  .exhibit__kind {
+    writing-mode: horizontal-tb;
+    transform: none;
+    letter-spacing: 0.22em;
+  }
+  .exhibit__middle {
+    order: -1;
+    height: auto;
+    flex: 1 1 auto;
+  }
+}

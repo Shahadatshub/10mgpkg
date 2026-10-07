@@ -1,0 +1,157 @@
+---
+import Base from "../../layouts/Base.astro";
+import Footer from "../../components/Footer.astro";
+import { loadGallery } from "../../lib/gallery.js";
+
+export async function getStaticPaths() {
+  const { photos } = await loadGallery();
+  return photos.map((photo, i) => ({
+    params: { slug: photo.slug },
+    props: {
+      photo,
+      prev: photos[(i - 1 + photos.length) % photos.length],
+      next: photos[(i + 1) % photos.length],
+      total: photos.length,
+      index: i,
+    },
+  }));
+}
+
+const { photo, prev, next, total, index } = Astro.props;
+---
+
+<Base
+  title={photo.title}
+  description={photo.caption || `${photo.title} — a photograph.`}
+  image={photo.full.src}
+  type="article"
+>
+    <a class="label single__back" href="/">← Gallery</a>
+
+  <main class="single">
+    <figure class="single__figure">
+      <img
+        class="single__img"
+        src={photo.full.src}
+        alt={photo.title}
+        width={photo.full.width}
+        height={photo.full.height}
+        style={`background-image:url(${photo.lqip});background-size:cover;`}
+      />
+    </figure>
+
+    <div class="single__meta">
+      <div class="single__text">
+        <h2 class="display single__title">{photo.title}</h2>
+        {photo.caption && <p class="single__caption">{photo.caption}</p>}
+      </div>
+
+      <nav class="single__nav label" aria-label="Photographs">
+        <a href={`/i/${prev.slug}/`} rel="prev">← Previous</a>
+        <span>{String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}</span>
+        <a href={`/i/${next.slug}/`} rel="next">Next →</a>
+      </nav>
+    </div>
+  </main>
+
+  <Footer />
+</Base>
+
+<style>
+  .single__back {
+    display: inline-block;
+    padding: 1.5rem var(--gutter) 0;
+    color: var(--ink-faint);
+    transition: color 200ms ease;
+  }
+
+  .single__back:hover {
+    color: var(--ink);
+  }
+
+  .single {
+    padding: 1.25rem var(--gutter) 0;
+  }
+
+  .single__figure {
+    margin: 0;
+    display: flex;
+    justify-content: center;
+  }
+
+  .single__img {
+    border-radius: var(--radius);
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 78vh;
+    object-fit: contain;
+  }
+
+  .single__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 1.5rem 0 0;
+  }
+
+  .single__title {
+    margin: 0;
+    font-size: 1.75rem;
+    color: var(--ink);
+  }
+
+  .single__caption {
+    margin: 0.5rem 0 0;
+    max-width: 40ch;
+    font-size: 0.8125rem;
+    color: var(--ink-dim);
+  }
+
+  .single__tags {
+    display: flex;
+    gap: 1rem;
+    margin: 0.875rem 0 0;
+  }
+
+  .single__tag {
+    padding-bottom: 0.125rem;
+    border-bottom: 1px solid var(--line-bright);
+    color: var(--ink-faint);
+    transition: color 200ms ease, border-color 200ms ease;
+  }
+
+  .single__tag:hover {
+    color: var(--ink);
+    border-bottom-color: var(--accent);
+  }
+
+  .single__nav {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    color: var(--ink-faint);
+  }
+
+  .single__nav a {
+    transition: color 200ms ease;
+  }
+
+  .single__nav a:hover {
+    color: var(--ink);
+  }
+</style>
+
+<script>
+  // Arrow keys move between photographs here too, matching the grid.
+  const prev = document.querySelector('a[rel="prev"]');
+  const next = document.querySelector('a[rel="next"]');
+  document.addEventListener("keydown", (e) => {
+    if (e.target instanceof HTMLInputElement) return;
+    if (e.key === "ArrowLeft" && prev) window.location.href = prev.href;
+    if (e.key === "ArrowRight" && next) window.location.href = next.href;
+    if (e.key === "Escape") window.location.href = "/";
+  });
+</script>

@@ -1,0 +1,15 @@
+---
+import { site } from "../data/photos.js";
+const year = new Date().getFullYear();
+---
+
+<footer class="footer label">
+  <span>© {year} {site.author}</span>
+  <span>
+    {site.links.instagram && (
+      <a href={site.links.instagram} rel="me noopener" target="_blank">Instagram</a>
+    )}
+    {site.links.instagram && site.links.email && " · "}
+    {site.links.email && <a href={`mailto:${site.links.email}`}>Email</a>}
+  </span>
+</footer>
