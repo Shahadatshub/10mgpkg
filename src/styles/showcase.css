@@ -346,11 +346,13 @@
   transition: transform 700ms var(--ease), box-shadow 700ms var(--ease);
 }
 
-.frame:hover {
-  transform: translateY(-8px);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.13),
-    0 40px 70px -30px rgba(0, 0, 0, 1);
+@media (hover: hover) {
+  .frame:hover {
+    transform: translateY(-8px);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.13),
+      0 40px 70px -30px rgba(0, 0, 0, 1);
+  }
 }
 
 .frame__para {
@@ -376,7 +378,12 @@
 }
 
 .frame__img {
+  opacity: 0;
   transition: opacity var(--fade) ease-out, transform var(--fade) var(--ease);
+}
+
+.frame.is-loaded .frame__img {
+  opacity: 1;
 }
 
 .frame__caption {
@@ -911,6 +918,10 @@ body::after {
   white-space: nowrap;
   letter-spacing: 0.3em;
   font-size: clamp(0.625rem, 1.05vw, 0.8125rem);
+}
+
+.exhibit__rail {
+  display: inline-block;
   opacity: 0;
   will-change: transform, opacity;
 }
@@ -944,5 +955,395 @@ body::after {
     order: -1;
     height: auto;
     flex: 1 1 auto;
+  }
+}
+
+/* ===========================================================================
+   SMOOTH SCROLL + SCROLL LOCK
+   The rules Lenis expects, plus the lock used while an overlay is open.
+   =========================================================================== */
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped,
+html.is-locked,
+html.is-locked body {
+  overflow: hidden;
+}
+
+/* ===========================================================================
+   OPENING SCREEN — entrance
+   The photographs and title arrive as the loading screen lifts, instead of
+   already sitting there when it fades.
+   =========================================================================== */
+
+html:not(.is-ready) .hero__slot,
+html:not(.is-ready) .hero__title,
+html:not(.is-ready) .hero__welcome {
+  opacity: 0;
+}
+
+.is-ready .hero__slot {
+  animation: slot-arrive 1300ms var(--ease) both;
+}
+
+.is-ready .hero__title {
+  animation: title-arrive 1400ms var(--ease) 80ms both;
+}
+
+.is-ready .hero__welcome {
+  animation: title-arrive 1400ms var(--ease) 260ms both;
+}
+
+@keyframes slot-arrive {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes title-arrive {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+    letter-spacing: 0.02em;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The "Scroll" cue: a hairline that draws downward, inviting the move */
+.hero__scroll {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  animation: none;
+  opacity: 0.7;
+}
+
+.hero__scroll-line {
+  position: relative;
+  width: 1px;
+  height: 2.5rem;
+  overflow: hidden;
+  background: var(--line);
+}
+
+.hero__scroll-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--ink-dim);
+  transform: translateY(-100%);
+  animation: scroll-draw 2.2s var(--ease) infinite;
+}
+
+@keyframes scroll-draw {
+  0% {
+    transform: translateY(-100%);
+  }
+  55% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+.slot__img {
+  transition: transform 900ms var(--ease);
+}
+
+@media (hover: hover) {
+  .slot:hover .slot__img--in {
+    transform: scale(1.045);
+  }
+}
+
+/* ===========================================================================
+   ALBUMS — touch, wide photographs, position
+   =========================================================================== */
+
+.reel__window {
+  /* Vertical swipes scroll the page; horizontal ones belong to the row */
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.reel__window--static .reel__track {
+  justify-content: center;
+}
+
+.reel--headless {
+  padding-top: 4rem;
+}
+
+/* A wide photograph shown whole, floating on a soft copy of itself */
+.frame--wide .frame__img {
+  object-fit: contain;
+}
+
+.frame__fill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.25);
+  filter: blur(28px) brightness(0.42) saturate(1.15);
+  opacity: 0;
+  transition: opacity var(--fade) ease-out;
+}
+
+.frame--wide.is-loaded .frame__fill {
+  opacity: 1;
+}
+
+/* A hairline of shadow so the photograph reads as laid on top */
+.frame--wide .frame__img {
+  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.55));
+}
+
+/* Arrows: round, quiet, always reachable */
+.reel__arrow {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border-radius: 999px;
+  background: rgba(10, 10, 10, 0.55);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  transition: opacity 250ms ease, background-color 250ms ease, transform 250ms var(--ease);
+}
+
+.reel__arrow--prev {
+  left: 0.875rem;
+}
+
+.reel__arrow--next {
+  right: 0.875rem;
+  background: rgba(10, 10, 10, 0.55);
+}
+
+.reel__arrow svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.reel__arrow:hover {
+  background: rgba(10, 10, 10, 0.8);
+}
+
+.reel__arrow:active {
+  transform: translateY(-50%) scale(0.94);
+}
+
+/* Phones and tablets have no hover, so the arrows must simply be there */
+@media (hover: none) {
+  .reel__arrow {
+    opacity: 1;
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+}
+
+/* Position in the row: dots to jump, a counter to orient */
+.reel__meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.reel__dots {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.reel__dot {
+  position: relative;
+  width: 1.375rem;
+  height: 1.375rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.reel__dot::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--ink-faint);
+  transform: translate(-50%, -50%);
+  transition: width 500ms var(--ease), background-color 300ms ease;
+}
+
+.reel__dot.is-on::after {
+  width: 1rem;
+  background: var(--ink);
+}
+
+.reel__dot:hover::after {
+  background: var(--ink-dim);
+}
+
+.reel__count {
+  min-width: 4.5rem;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.reel__countSep {
+  margin: 0 0.4em;
+  opacity: 0.5;
+}
+
+/* ===========================================================================
+   MENU BAR — where you are
+   =========================================================================== */
+
+.topbar__link {
+  position: relative;
+}
+
+.topbar__link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.45rem;
+  height: 1px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transition: transform 500ms var(--ease);
+}
+
+.topbar__link.is-active {
+  color: var(--ink);
+}
+
+.topbar__link.is-active::after {
+  transform: scaleX(1);
+}
+
+/* ===========================================================================
+   LIGHTBOX — exit, touch, instant preview
+   =========================================================================== */
+
+.lightbox--out {
+  animation: box-out 220ms ease-in forwards;
+}
+
+@keyframes box-out {
+  to {
+    opacity: 0;
+  }
+}
+
+.lightbox__stage {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.lightbox__img {
+  /* The cached thumbnail stretched exactly under the full photograph, so
+     there is never an empty frame while it downloads. */
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  will-change: transform;
+}
+
+.lightbox__close {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-right: -0.5rem;
+  padding: 0;
+}
+
+.lightbox__close svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.lightbox__nav {
+  display: grid;
+  place-items: center;
+  padding: 0.75rem;
+}
+
+.lightbox__nav svg {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+/* On a phone the photograph gets the full width; swiping replaces arrows */
+@media (max-width: 620px) {
+  .lightbox__nav {
+    display: none;
+  }
+  .lightbox__stage {
+    padding: 1rem 0;
+  }
+  .lightbox__img {
+    border-radius: 0;
+  }
+}
+
+/* ===========================================================================
+   PHONES — tighter rhythm
+   Desktop spacing on a phone means scrolling through screens of nothing.
+   =========================================================================== */
+
+@media (max-width: 720px) {
+  :root {
+    --gutter: 1.25rem;
+  }
+  .reel {
+    padding-top: 5.5rem;
+  }
+  .reel__head {
+    margin-bottom: 2rem;
+  }
+  .exhibit {
+    margin-top: 5rem;
+  }
+  .ending {
+    margin-top: 6rem;
+    padding-top: 5rem;
+  }
+  .hero__scroll {
+    bottom: 1.25rem;
   }
 }

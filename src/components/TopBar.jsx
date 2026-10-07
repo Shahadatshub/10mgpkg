@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { onFrame, scrollToTarget } from "../lib/motion.js";
 
 /* ---------------------------------------------------------------------------
    Fixed menu bar. Transparent over the opening screen so nothing competes with
@@ -38,31 +39,40 @@ function ShopIcon() {
 
 export default function TopBar({ site = {}, sections = [] }) {
   const [solid, setSolid] = useState(false);
+  const [active, setActive] = useState(null);
 
+  useEffect(
+    () => onFrame((y, vh) => setSolid(y > vh * 0.55)),
+    []
+  );
+
+  // Lights up the album currently on screen, so the menu doubles as a
+  // "you are here" marker.
   useEffect(() => {
-    const onScroll = () => setSolid(window.scrollY > window.innerHeight * 0.55);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    const els = sections
+      .filter((s) => s.title)
+      .map((s) => document.getElementById(s.id))
+      .filter(Boolean);
+    if (!els.length) return;
+    const seen = new Map();
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) seen.set(e.target.id, e.isIntersecting);
+        const first = els.find((el) => seen.get(el.id));
+        setActive(first ? first.id : null);
+      },
+      { rootMargin: "-40% 0px -45% 0px" }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [sections]);
 
-  // Hands the movement to the smooth scroller when it is running, so a menu
-  // click glides the same way a wheel scroll does.
+  // Hands the movement to the smooth scroller, so a menu click glides the
+  // same way a wheel scroll does.
   const jump = (e, id) => {
     e.preventDefault();
     const el = id ? document.getElementById(id) : null;
-    const lenis = typeof window !== "undefined" ? window.__lenis : null;
-
-    if (lenis) {
-      lenis.scrollTo(el || 0, { offset: -84, duration: 1.3 });
-      return;
-    }
-    if (el) {
-      const y = el.getBoundingClientRect().top + window.scrollY - 84;
-      window.scrollTo({ top: y, behavior: "smooth" });
-    } else {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    scrollToTarget(el || 0, { offset: -84, duration: 1.3 });
   };
 
   const links = site.links || {};
@@ -83,7 +93,8 @@ export default function TopBar({ site = {}, sections = [] }) {
           .map((s) => (
             <a
               key={s.id}
-              className="label topbar__link"
+              className={`label topbar__link${active === s.id ? " is-active" : ""}`}
+              aria-current={active === s.id ? "true" : undefined}
               href={`#${s.id}`}
               onClick={(e) => jump(e, s.id)}
             >

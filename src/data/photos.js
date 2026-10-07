@@ -15,6 +15,9 @@ export const site = {
         shop: "https://amg06.stores.jp/?category_id=66c37d0accd49a06aa094c77",
         email: "",
     },
+    // Cuts black bars that are baked into a photo file (Instagram exports,
+    // letterboxed shots). Set to false to show every photo exactly as saved.
+    trimBorders: true,
 };
 export const exhibition = {
     poster: "/exhibition-photo.jpg",
@@ -84,7 +87,7 @@ export const sections = [
         id: "other",
         title: "Other Random Shoots",
         subtitle: "",
-        photos: ["17.jpg", "18.jpg", "19.jpg", "20.jpg"],
+        photos: ["17 .jpg", "18.jpg", "19.jpg"],
     },
 ];
 

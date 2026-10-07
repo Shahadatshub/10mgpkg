@@ -20,8 +20,11 @@ import {
   site,
 } from "../data/photos.js";
 
+// Reads the prepared copies in .cache/photos/ (black bars already removed by
+// scripts/prepare-photos.mjs, which runs before every dev and build). Your
+// originals stay untouched in src/photos/.
 const sources = import.meta.glob(
-  "../photos/*.{jpg,jpeg,png,webp,avif,tif,tiff,JPG,JPEG,PNG,WEBP,AVIF}",
+  "../../.cache/photos/*.{jpg,jpeg,png,webp,avif,tif,tiff,JPG,JPEG,PNG,WEBP,AVIF}",
   { eager: true }
 );
 
@@ -29,10 +32,10 @@ const sources = import.meta.glob(
 // unreliable here because this module gets bundled to a temporary location.
 const PHOTO_DIR = (() => {
   const candidates = [
-    path.join(process.cwd(), "src", "photos"),
+    path.join(process.cwd(), ".cache", "photos"),
     (() => {
       try {
-        return fileURLToPath(new URL("../photos/", import.meta.url));
+        return fileURLToPath(new URL("../../.cache/photos/", import.meta.url));
       } catch {
         return null;
       }
@@ -92,8 +95,11 @@ export async function loadGallery() {
       const [thumb, full, lqip] = await Promise.all([
         getImage({
           src: image,
-          widths: [400, 700, 1000],
-          sizes: "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw",
+          // Matches the album rows: one photo across on a phone, two on a
+          // tablet, three on a desktop. Phones have 2-3x pixel density, so
+          // the widest version is needed there, not on the desktop.
+          widths: [400, 700, 1000, 1400],
+          sizes: "(max-width: 619px) 92vw, (max-width: 999px) 48vw, 32vw",
           format: "webp",
           quality: 78,
         }),
@@ -110,6 +116,9 @@ export async function loadGallery() {
         filename,
         slug: slugify(filename),
         title: info.title || titleize(filename),
+        // True when nobody wrote a title, so the interface can avoid
+        // printing raw filenames like "1" or "722215715_1809..." at visitors.
+        autoTitle: !info.title,
         caption: info.caption || "",
         width: image.width,
         height: image.height,

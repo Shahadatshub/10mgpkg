@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from "react";
+import { onFrame } from "../lib/motion.js";
 
 /* ---------------------------------------------------------------------------
    A scroll-pinned sequence for the current exhibition.
@@ -12,8 +13,9 @@ import React, { useRef, useEffect } from "react";
      2. the wording morphs in around it, each line from its own direction
      3. poster and wording part and leave in opposite directions
 
-   Everything is written straight to style in one animation loop rather than
-   through React state, so no frame costs a re-render.
+   Everything is written straight to style from the page's shared animation
+   loop (lib/motion.js) rather than through React state, so no frame costs a
+   re-render, and nothing runs while the page is standing still.
    --------------------------------------------------------------------------- */
 
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
@@ -60,11 +62,15 @@ export default function Exhibition({ exhibition = {} }) {
       return;
     }
 
-    let raf;
-    const tick = () => {
+    let lastP = -1;
+    return onFrame((_, vh) => {
       const r = wrap.getBoundingClientRect();
-      const travel = r.height - window.innerHeight;
+      // Off screen in either direction: nothing to draw.
+      if (r.bottom < -50 || r.top > vh + 50) return;
+      const travel = r.height - vh;
       const p = travel > 0 ? clamp(-r.top / travel) : 0;
+      if (Math.abs(p - lastP) < 0.0004) return;
+      lastP = p;
 
       // 1 — the poster finds focus, the way the loading screen does
       const enter = outExpo(seg(p, 0.02, 0.26));
@@ -75,7 +81,9 @@ export default function Exhibition({ exhibition = {} }) {
       if (poster) {
         const scale = 0.86 + 0.14 * enter - 0.06 * leave;
         const x = -180 * leave;
-        const blur = (1 - enter) * 14;
+        // A lighter blur than the loading screen's: a blurred image this
+        // large is expensive to redraw on every frame of a scroll.
+        const blur = (1 - enter) * 8;
         poster.style.transform = `translate3d(${x}px, 0, 0) scale(${scale.toFixed(4)})`;
         poster.style.opacity = String(clamp(enter - leave));
         poster.style.filter = blur > 0.15 ? `blur(${blur.toFixed(2)}px)` : "none";
@@ -96,11 +104,7 @@ export default function Exhibition({ exhibition = {} }) {
         el.style.opacity = String(clamp(a - leave));
       }
 
-      raf = requestAnimationFrame(tick);
-    };
-
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    });
   }, []);
 
   const set = (key) => (el) => {
@@ -114,8 +118,10 @@ export default function Exhibition({ exhibition = {} }) {
       <div className="exhibit__stage" ref={stageRef}>
         <div className="exhibit__grid">
           {exhibition.dates && (
-            <p className="exhibit__dates label" ref={set("dates")}>
-              {exhibition.dates}
+            <p className="exhibit__dates label">
+              <span className="exhibit__rail" ref={set("dates")}>
+                {exhibition.dates}
+              </span>
             </p>
           )}
 
@@ -149,8 +155,10 @@ export default function Exhibition({ exhibition = {} }) {
           </div>
 
           {exhibition.kind && (
-            <p className="exhibit__kind label" ref={set("kind")}>
-              {exhibition.kind}
+            <p className="exhibit__kind label">
+              <span className="exhibit__rail" ref={set("kind")}>
+                {exhibition.kind}
+              </span>
             </p>
           )}
         </div>

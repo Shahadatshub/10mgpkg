@@ -1,4 +1,5 @@
 import React from "react";
+import { scrollToTarget } from "../lib/motion.js";
 
 /* ---------------------------------------------------------------------------
    A destination for the scroll. Without this the page simply stops; with it,
@@ -11,9 +12,7 @@ export default function Ending({ site = {} }) {
 
   const toTop = (e) => {
     e.preventDefault();
-    const lenis = typeof window !== "undefined" ? window.__lenis : null;
-    if (lenis) lenis.scrollTo(0, { duration: 1.6 });
-    else window.scrollTo({ top: 0, behavior: "smooth" });
+    scrollToTarget(0, { duration: 1.6 });
   };
 
   return (
