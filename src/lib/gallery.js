@@ -6,10 +6,12 @@ import { supabase, publicUrl } from "./supabase.js";
    have to change at all when the data moved out of the repo.
    =========================================================================== */
 
-// Pages are rendered per request, so without this every visitor would cost a
-// round trip to the database. Sixty seconds is short enough that a change in
-// the dashboard shows up almost immediately.
-const TTL_MS = 60 * 1000;
+// No caching between visits: every page load reads the current state of the
+// library, so a change in the dashboard shows up on the next refresh. On
+// Cloudflare a shared cache would also differ from one server to the next,
+// so visitors could see different versions for a while. The three queries
+// are small, so this costs very little.
+const TTL_MS = 0;
 let cache = null;
 let cachedAt = 0;
 
