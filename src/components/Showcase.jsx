@@ -252,8 +252,40 @@ const SLOTS_SM = [
   { l: 57, t: 68, w: 36, small: true },
 ];
 
-function HeroSlot({ pool, seed, delay, onOpen }) {
-  const [pair, setPair] = useState({ cur: seed % pool.length, prev: null });
+/* Fisher–Yates: every ordering equally likely. */
+function shuffled(n) {
+  const a = Array.from({ length: n }, (_, i) => i);
+  for (let i = n - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function HeroSlot({ pool, start, slot, showing, delay, onOpen }) {
+  const [pair, setPair] = useState({ cur: start, prev: null });
+
+  // The page is rendered on the server first, where nothing can be random
+  // without the browser disagreeing. So each slot starts on a fixed photo and
+  // takes its shuffled one as soon as it mounts — under the loading screen,
+  // before anyone can see the change.
+  useEffect(() => {
+    setPair({ cur: start, prev: null });
+  }, [start]);
+
+  // Tell the other slots what this one is showing.
+  useEffect(() => {
+    showing.current[slot] = pair.cur;
+  }, [pair.cur, slot, showing]);
+
+  /** A different photograph, preferring one no other slot is showing. */
+  const pickNext = (cur) => {
+    const busy = new Set(showing.current.filter((_, i) => i !== slot));
+    let options = [];
+    for (let k = 0; k < pool.length; k++) if (k !== cur && !busy.has(k)) options.push(k);
+    if (!options.length) for (let k = 0; k < pool.length; k++) if (k !== cur) options.push(k);
+    return options[Math.floor(Math.random() * options.length)];
+  };
 
   useEffect(() => {
     if (pool.length < 2 || reduced()) return;
@@ -263,10 +295,7 @@ function HeroSlot({ pool, seed, delay, onOpen }) {
         // Don't swap photographs nobody can see (the tab is hidden, or the
         // visitor has scrolled well past the opening screen).
         if (document.hidden || window.scrollY > window.innerHeight * 1.5) return;
-        setPair((p) => ({
-          prev: p.cur,
-          cur: (p.cur + 1 + Math.floor(Math.random() * 3)) % pool.length,
-        }));
+        setPair((p) => ({ prev: p.cur, cur: pickNext(p.cur) }));
       }, 5200);
     }, delay);
     return () => {
@@ -311,6 +340,15 @@ function Hero({ hero, onOpen }) {
   const pool = hero.pool || [];
   const [narrow, setNarrow] = useState(false);
 
+  // Which photograph each slot opens on. Fixed for the server render, then
+  // shuffled once in the browser so every visit starts differently. With
+  // eight or more photographs, no two slots open on the same one.
+  const [order, setOrder] = useState(() => pool.map((_, i) => i));
+  const showing = useRef([]);
+  useEffect(() => {
+    setOrder(shuffled(pool.length));
+  }, [pool.length]);
+
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 720px)");
     const sync = () => setNarrow(mq.matches);
@@ -342,7 +380,9 @@ function Hero({ hero, onOpen }) {
               >
                 <HeroSlot
                   pool={pool}
-                  seed={i * 3}
+                  start={order[i % order.length] ?? 0}
+                  slot={i}
+                  showing={showing}
                   delay={i * 640}
                   onOpen={onOpen}
                 />
@@ -872,7 +912,7 @@ export default function Showcase({ hero, sections, site, exhibition }) {
     return (
       <div className="empty">
         <p className="display empty__line">
-          No photographs yet. Drop image files into <code>src/photos/</code>.
+          No photographs yet. Upload some from <code>/admin</code>.
         </p>
       </div>
     );

@@ -1,192 +1,131 @@
-/* ===========================================================================
-   Runs once, at build time. You should not need to touch this.
+import { supabase, publicUrl } from "./supabase.js";
 
-   For every image in src/photos/ it produces:
-     - a responsive set of thumbnails for the grid
-     - one large version for the lightbox
-     - a tiny blurred placeholder, inlined as text, so nothing pops in
-     - the real dimensions, so the grid never jumps while loading
+/* ===========================================================================
+   Reads the gallery out of Supabase and hands back exactly the shape the
+   site already expects, so Showcase, Exhibition and the photo pages did not
+   have to change at all when the data moved out of the repo.
    =========================================================================== */
 
-import { getImage } from "astro:assets";
-import sharp from "sharp";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import {
-  photos as described,
-  sections as sectionList,
-  hero as heroConfig,
-  site,
-} from "../data/photos.js";
-
-// Reads the prepared copies in .cache/photos/ (black bars already removed by
-// scripts/prepare-photos.mjs, which runs before every dev and build). Your
-// originals stay untouched in src/photos/.
-const sources = import.meta.glob(
-  "../../.cache/photos/*.{jpg,jpeg,png,webp,avif,tif,tiff,JPG,JPEG,PNG,WEBP,AVIF}",
-  { eager: true }
-);
-
-// The build runs from the project root. Resolving from import.meta.url is
-// unreliable here because this module gets bundled to a temporary location.
-const PHOTO_DIR = (() => {
-  const candidates = [
-    path.join(process.cwd(), ".cache", "photos"),
-    (() => {
-      try {
-        return fileURLToPath(new URL("../../.cache/photos/", import.meta.url));
-      } catch {
-        return null;
-      }
-    })(),
-  ].filter(Boolean);
-
-  for (const dir of candidates) {
-    if (fs.existsSync(dir)) return dir;
-  }
-  return candidates[0];
-})();
-
-function slugify(name) {
-  return name
-    .replace(/\.[^.]+$/, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function titleize(name) {
-  const bare = name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
-  return bare.charAt(0).toUpperCase() + bare.slice(1);
-}
-
-// A 20px-wide blurred version, inlined as a data URL. This is what you see
-// while the real photograph downloads.
-async function placeholder(filename) {
-  try {
-    const buf = await sharp(path.join(PHOTO_DIR, filename))
-      .resize(20, null, { fit: "inside" })
-      .blur(1.2)
-      .webp({ quality: 40 })
-      .toBuffer();
-    return `data:image/webp;base64,${buf.toString("base64")}`;
-  } catch (err) {
-    // Don't fail the build over a placeholder, but don't hide it either —
-    // a silent failure here means photos pop in instead of fading.
-    console.warn(
-      `[aperture] Could not make a blur placeholder for ${filename}: ${err.message}`
-    );
-    return "";
-  }
-}
-
+// Pages are rendered per request, so without this every visitor would cost a
+// round trip to the database. Sixty seconds is short enough that a change in
+// the dashboard shows up almost immediately.
+const TTL_MS = 60 * 1000;
 let cache = null;
+let cachedAt = 0;
 
-export async function loadGallery() {
-  if (cache) return cache;
+export function clearGalleryCache() {
+  cache = null;
+  cachedAt = 0;
+}
 
-  const entries = await Promise.all(
-    Object.entries(sources).map(async ([key, mod]) => {
-      const filename = key.split("/").pop();
-      const image = mod.default ?? mod;
-      const info = described[filename] ?? {};
+function toPhoto(row) {
+  const thumb = publicUrl(row.thumb_path);
+  const full = publicUrl(row.full_path);
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title || row.slug,
+    caption: row.caption || "",
+    width: row.width || 4,
+    height: row.height || 3,
+    lqip: row.lqip || "",
+    thumb: {
+      src: thumb,
+      // Both renditions are offered so a high-density screen can reach for
+      // the larger one in the grid instead of showing a soft thumbnail.
+      srcset: `${thumb} 900w, ${full} 2200w`,
+      sizes: "(max-width: 620px) 92vw, (max-width: 1000px) 46vw, 31vw",
+    },
+    full: { src: full, width: row.width || 1600, height: row.height || 1200 },
+  };
+}
 
-      const [thumb, full, lqip] = await Promise.all([
-        getImage({
-          src: image,
-          // Matches the album rows: one photo across on a phone, two on a
-          // tablet, three on a desktop. Phones have 2-3x pixel density, so
-          // the widest version is needed there, not on the desktop.
-          widths: [400, 700, 1000, 1400],
-          sizes: "(max-width: 619px) 92vw, (max-width: 999px) 48vw, 32vw",
-          format: "webp",
-          quality: 78,
-        }),
-        getImage({
-          src: image,
-          width: Math.min(image.width, 2400),
-          format: "webp",
-          quality: 82,
-        }),
-        placeholder(filename),
-      ]);
+export async function loadGallery({ fresh = false } = {}) {
+  if (!fresh && cache && Date.now() - cachedAt < TTL_MS) return cache;
 
-      return {
-        filename,
-        slug: slugify(filename),
-        title: info.title || titleize(filename),
-        // True when nobody wrote a title, so the interface can avoid
-        // printing raw filenames like "1" or "722215715_1809..." at visitors.
-        autoTitle: !info.title,
-        caption: info.caption || "",
-        width: image.width,
-        height: image.height,
-        lqip,
-        thumb: {
-          src: thumb.src,
-          srcset: thumb.srcSet?.attribute || "",
-          sizes: thumb.attributes?.sizes || "",
-        },
-        full: {
-          src: full.src,
-          width: full.attributes?.width || image.width,
-          height: full.attributes?.height || image.height,
-        },
-      };
-    })
-  );
+  const [albumsRes, photosRes, settingsRes] = await Promise.all([
+    supabase
+      .from("albums")
+      .select("id, slug, title, subtitle, position")
+      .eq("published", true)
+      .order("position", { ascending: true }),
+    supabase
+      .from("photos")
+      .select(
+        "id, album_id, slug, title, caption, full_path, thumb_path, lqip, width, height, position, in_hero"
+      )
+      .eq("published", true)
+      .order("position", { ascending: true }),
+    supabase.from("settings").select("*").eq("id", 1).maybeSingle(),
+  ]);
 
-  entries.sort((a, b) => a.filename.localeCompare(b.filename));
-
-  const byName = new Map(entries.map((e) => [e.filename, e]));
-
-  // Sections keep the order you wrote them in. A filename that doesn't match
-  // a real file is skipped rather than breaking the build.
-  const missing = [];
-  const built = sectionList.map((s) => {
-    const picked = (s.photos || [])
-      .map((name) => {
-        const hit = byName.get(name);
-        if (!hit) missing.push(`${name} (in "${s.title}")`);
-        return hit;
-      })
-      .filter(Boolean);
-    return { ...s, photos: picked };
-  });
-
-  if (missing.length) {
-    console.warn(
-      `[aperture] These filenames are listed in a section but aren't in src/photos/:\n  ${missing.join(
-        "\n  "
-      )}`
-    );
+  for (const res of [albumsRes, photosRes, settingsRes]) {
+    if (res.error) throw new Error(`Supabase: ${res.error.message}`);
   }
 
-  // Anything not placed in a section still gets shown, at the bottom.
-  const placed = new Set(built.flatMap((s) => s.photos.map((p) => p.filename)));
-  const leftover = entries.filter((e) => !placed.has(e.filename));
+  const allPhotos = (photosRes.data || []).map(toPhoto);
+  const byId = new Map();
+  (photosRes.data || []).forEach((row, i) => byId.set(row.id, allPhotos[i]));
 
-  const live = built.filter((s) => s.photos.length > 0);
-  if (leftover.length) {
-    live.push({
-      id: "more",
-      title: heroConfig.overflowTitle || "",
-      subtitle: "",
-      photos: leftover,
-    });
+  // Group photographs under their album, keeping the order the dashboard set.
+  const grouped = new Map();
+  for (const row of photosRes.data || []) {
+    if (!row.album_id) continue;
+    if (!grouped.has(row.album_id)) grouped.set(row.album_id, []);
+    grouped.get(row.album_id).push(byId.get(row.id));
   }
 
-  const pool =
-    heroConfig.photos?.length > 0
-      ? heroConfig.photos.map((n) => byName.get(n)).filter(Boolean)
-      : entries;
+  const sections = (albumsRes.data || [])
+    .map((a) => ({
+      id: a.slug,
+      title: a.title,
+      subtitle: a.subtitle || "",
+      photos: grouped.get(a.id) || [],
+    }))
+    .filter((s) => s.photos.length > 0);
+
+  // Anything not filed into an album still shows, at the bottom.
+  const loose = (photosRes.data || [])
+    .filter((r) => !r.album_id)
+    .map((r) => byId.get(r.id));
+  if (loose.length) {
+    sections.push({ id: "more", title: "", subtitle: "", photos: loose });
+  }
+
+  const s = settingsRes.data || {};
+  const site = {
+    title: s.site_title || "10MGPKG",
+    author: s.author || "",
+    links: {
+      instagram: s.instagram_url || "",
+      shop: s.shop_url || "",
+      email: s.email || "",
+    },
+  };
+
+  const ex = s.exhibition && typeof s.exhibition === "object" ? s.exhibition : {};
+  const exhibition = ex.poster
+    ? { ...ex, poster: ex.poster.startsWith("http") ? ex.poster : publicUrl(ex.poster) }
+    : null;
 
   cache = {
-    photos: entries,
-    sections: live,
-    hero: { ...heroConfig, pool },
+    photos: allPhotos,
+    sections,
+    hero: {
+      title: s.hero_title || "10MGPKG",
+      welcome: s.hero_welcome || "",
+      // The photographs you ticked for the opening screen; every photograph
+      // if you haven't chosen any yet.
+      pool: (() => {
+        const chosen = (photosRes.data || [])
+          .filter((r) => r.in_hero)
+          .map((r) => byId.get(r.id));
+        return chosen.length ? chosen : allPhotos;
+      })(),
+    },
     site,
+    exhibition,
   };
+  cachedAt = Date.now();
   return cache;
 }

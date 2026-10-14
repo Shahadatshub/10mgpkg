@@ -1,23 +1,22 @@
 ---
+// Rendered per request, so a change in the dashboard appears without a rebuild.
+export const prerender = false;
+
 import Base from "../../layouts/Base.astro";
 import Footer from "../../components/Footer.astro";
 import { loadGallery } from "../../lib/gallery.js";
 
-export async function getStaticPaths() {
-  const { photos } = await loadGallery();
-  return photos.map((photo, i) => ({
-    params: { slug: photo.slug },
-    props: {
-      photo,
-      prev: photos[(i - 1 + photos.length) % photos.length],
-      next: photos[(i + 1) % photos.length],
-      total: photos.length,
-      index: i,
-    },
-  }));
-}
+const { photos } = await loadGallery();
+const index = photos.findIndex((p) => p.slug === Astro.params.slug);
 
-const { photo, prev, next, total, index } = Astro.props;
+// A link to a photograph that has since been deleted goes home rather than
+// showing an error page.
+if (index < 0) return Astro.redirect("/", 302);
+
+const photo = photos[index];
+const prev = photos[(index - 1 + photos.length) % photos.length];
+const next = photos[(index + 1) % photos.length];
+const total = photos.length;
 ---
 
 <Base
@@ -26,7 +25,7 @@ const { photo, prev, next, total, index } = Astro.props;
   image={photo.full.src}
   type="article"
 >
-    <a class="label single__back" href="/">← Gallery</a>
+  <a class="label single__back" href="/">← Gallery</a>
 
   <main class="single">
     <figure class="single__figure">
@@ -108,24 +107,6 @@ const { photo, prev, next, total, index } = Astro.props;
     max-width: 40ch;
     font-size: 0.8125rem;
     color: var(--ink-dim);
-  }
-
-  .single__tags {
-    display: flex;
-    gap: 1rem;
-    margin: 0.875rem 0 0;
-  }
-
-  .single__tag {
-    padding-bottom: 0.125rem;
-    border-bottom: 1px solid var(--line-bright);
-    color: var(--ink-faint);
-    transition: color 200ms ease, border-color 200ms ease;
-  }
-
-  .single__tag:hover {
-    color: var(--ink);
-    border-bottom-color: var(--accent);
   }
 
   .single__nav {

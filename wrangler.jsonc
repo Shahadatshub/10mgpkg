@@ -1,0 +1,17 @@
+// Tells Cloudflare how to run the site as a Worker.
+// The server code (pages rendered per visit) lives in dist/_worker.js;
+// everything else in dist is served as plain files.
+{
+  "name": "10mgpkg",
+  "main": "./dist/_worker.js/index.js",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist"
+  },
+  // Keep any variables set in the Cloudflare dashboard instead of wiping
+  // them on every deploy.
+  "keep_vars": true,
+  "observability": { "enabled": true }
+}
