@@ -54,7 +54,7 @@ export async function loadGallery({ fresh = false } = {}) {
     supabase
       .from("photos")
       .select(
-        "id, album_id, slug, title, caption, full_path, thumb_path, lqip, width, height, position, in_hero"
+        "id, album_id, slug, title, caption, full_path, thumb_path, lqip, width, height, position, in_hero, hero_only"
       )
       .eq("published", true)
       .order("position", { ascending: true }),
@@ -87,8 +87,9 @@ export async function loadGallery({ fresh = false } = {}) {
     .filter((s) => s.photos.length > 0);
 
   // Anything not filed into an album still shows, at the bottom.
+  // Photos uploaded only for the opening screen never fall into this section.
   const loose = (photosRes.data || [])
-    .filter((r) => !r.album_id)
+    .filter((r) => !r.album_id && !r.hero_only)
     .map((r) => byId.get(r.id));
   if (loose.length) {
     sections.push({ id: "more", title: "", subtitle: "", photos: loose });

@@ -134,7 +134,7 @@ export async function deletePhoto(row) {
  * Processes and uploads one file, then records it.
  * `onStage` reports progress so the interface can show where it has got to.
  */
-export async function uploadOne(file, { albumId, caption, position, onStage }) {
+export async function uploadOne(file, { albumId, caption, position, heroOnly = false, onStage }) {
   onStage?.("resizing");
   const made = await prepare(file);
 
@@ -158,6 +158,9 @@ export async function uploadOne(file, { albumId, caption, position, onStage }) {
     .from("photos")
     .insert({
       album_id: albumId || null,
+      // Uploaded straight to the opening screen: shown there and nowhere else.
+      in_hero: heroOnly,
+      hero_only: heroOnly,
       slug,
       title: titleFrom(made.originalName),
       caption: caption || "",

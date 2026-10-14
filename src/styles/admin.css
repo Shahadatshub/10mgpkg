@@ -922,3 +922,20 @@ body:has(.adm)::after {
   display: flex;
   justify-content: flex-end;
 }
+
+/* Edit link under photos uploaded only for the opening screen */
+.adm-grid--pick > li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.adm-pick__edit {
+  align-self: flex-start;
+  height: 1.5rem;
+}
+
+/* The upload tray sits under the opening screen header */
+.adm-hero__count + * {
+  margin-top: 0;
+}

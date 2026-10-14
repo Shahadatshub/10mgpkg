@@ -177,6 +177,7 @@ function UploadTray({ albumId, startPosition, onDone }) {
       try {
         const row = await lib.uploadOne(item.file, {
           albumId: albumId === UNFILED || albumId === HERO || albumId === EXHIBIT ? null : albumId,
+          heroOnly: albumId === HERO,
           caption: item.caption,
           position: pos++,
           onStage: (stage) =>
@@ -293,15 +294,25 @@ function UploadTray({ albumId, startPosition, onDone }) {
    the opening screen; click again to take it off.
    =========================================================================== */
 
-function HeroPicker({ albums, photos, onToggle, onClear }) {
+function HeroPicker({ albums, photos, onToggle, onClear, onEdit, tray }) {
   const chosen = photos.filter((p) => p.in_hero).length;
   const groups = [
+    {
+      key: "heroOnly",
+      title: "Uploaded for the opening screen only",
+      items: photos.filter((p) => p.hero_only),
+      editable: true,
+    },
     ...albums.map((a) => ({
       key: a.id,
       title: a.title,
       items: photos.filter((p) => p.album_id === a.id),
     })),
-    { key: UNFILED, title: "Unfiled", items: photos.filter((p) => !p.album_id) },
+    {
+      key: UNFILED,
+      title: "Unfiled",
+      items: photos.filter((p) => !p.album_id && !p.hero_only),
+    },
   ].filter((g) => g.items.length > 0);
 
   return (
@@ -311,7 +322,9 @@ function HeroPicker({ albums, photos, onToggle, onClear }) {
           <h2 className="display adm-main__title">Opening screen</h2>
           <p className="adm-main__note">
             The photographs that float around the title on the first screen.
-            Click to add or remove. If none are chosen, every photograph is used.
+            Click to add or remove. Photos you upload here appear only on the
+            opening screen, never in an album. If none are chosen, every
+            photograph is used.
           </p>
         </div>
         <div className="adm-hero__count">
@@ -326,9 +339,11 @@ function HeroPicker({ albums, photos, onToggle, onClear }) {
         </div>
       </div>
 
+      {tray}
+
       {groups.length === 0 ? (
         <p className="adm-empty display">
-          No photographs yet. Upload some into an album first.
+          No photographs yet. Upload some above, or into an album.
         </p>
       ) : (
         groups.map((g) => (
@@ -348,6 +363,14 @@ function HeroPicker({ albums, photos, onToggle, onClear }) {
                     </span>
                     <span className="adm-pick__title">{p.title || p.slug}</span>
                   </button>
+                  {g.editable && (
+                    <button
+                      className="adm-icon adm-icon--text adm-pick__edit"
+                      onClick={() => onEdit(p)}
+                    >
+                      Edit
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -528,7 +551,7 @@ function Dashboard() {
     setTimeout(() => setStatus((s) => (s === text ? "" : s)), 2600);
   }, []);
 
-  const unfiled = photos.filter((p) => !p.album_id);
+  const unfiled = photos.filter((p) => !p.album_id && !p.hero_only);
   const shown =
     selected === UNFILED ? unfiled : photos.filter((p) => p.album_id === selected);
   const album = albums.find((a) => a.id === selected) || null;
@@ -682,8 +705,11 @@ function Dashboard() {
     const count = photos.filter((x) => x.album_id === target).length;
     try {
       await lib.movePhoto(p.id, target, count + 1);
+      if (p.hero_only) await lib.updatePhoto(p.id, { hero_only: false });
       setPhotos((list) =>
-        list.map((x) => (x.id === p.id ? { ...x, album_id: target } : x))
+        list.map((x) =>
+          x.id === p.id ? { ...x, album_id: target, hero_only: false } : x
+        )
       );
       note("Moved");
     } catch (e) {
@@ -825,6 +851,17 @@ function Dashboard() {
               photos={photos}
               onToggle={toggleHero}
               onClear={clearHero}
+              onEdit={setEditing}
+              tray={
+                <UploadTray
+                  albumId={HERO}
+                  startPosition={photos.filter((p) => p.hero_only).length + 1}
+                  onDone={(rows) => {
+                    setPhotos((list) => [...list, ...rows]);
+                    note(`${rows.length} added to the opening screen`);
+                  }}
+                />
+              }
             />
           ) : (
           <>
@@ -967,9 +1004,14 @@ function EditPanel({ photo, albums, onClose, onSave, onDelete, onMove }) {
         <label className="adm-field">
           <span className="label">Album</span>
           <select
-            value={photo.album_id || UNFILED}
-            onChange={(e) => onMove(e.target.value)}
+            value={photo.hero_only ? "__heroonly__" : photo.album_id || UNFILED}
+            onChange={(e) => {
+              if (e.target.value !== "__heroonly__") onMove(e.target.value);
+            }}
           >
+            {photo.hero_only && (
+              <option value="__heroonly__">Opening screen only</option>
+            )}
             <option value={UNFILED}>Unfiled</option>
             {albums.map((a) => (
               <option key={a.id} value={a.id}>
