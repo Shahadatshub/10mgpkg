@@ -8,6 +8,7 @@ import * as lib from "../lib/library.js";
 
 const UNFILED = "__unfiled__";
 const HERO = "__hero__";
+const EXHIBIT = "__exhibit__";
 
 /* ---------------------------------------------------------------------------
    Reordering works two ways on purpose. Dragging is natural with a mouse but
@@ -175,7 +176,7 @@ function UploadTray({ albumId, startPosition, onDone }) {
       if (item.stage === "done") continue;
       try {
         const row = await lib.uploadOne(item.file, {
-          albumId: albumId === UNFILED || albumId === HERO ? null : albumId,
+          albumId: albumId === UNFILED || albumId === HERO || albumId === EXHIBIT ? null : albumId,
           caption: item.caption,
           position: pos++,
           onStage: (stage) =>
@@ -357,6 +358,146 @@ function HeroPicker({ albums, photos, onToggle, onClear }) {
   );
 }
 
+/* ===========================================================================
+   EXHIBITION PANEL
+   The scroll-pinned exhibition block on the home page: switch it on or off,
+   swap the poster, and edit the wording around it. Switching it off keeps
+   everything here, ready for the next show.
+   =========================================================================== */
+
+const EX_FIELDS = [
+  { key: "title", label: "Title", hint: "Above the poster" },
+  { key: "dates", label: "Dates", hint: "Runs down the left side" },
+  { key: "kind", label: "Label", hint: "Runs down the right side, in red" },
+  { key: "venue", label: "Venue", hint: "Under the poster" },
+  { key: "place", label: "Area", hint: "Small, in red, next to the venue" },
+  { key: "link", label: "Link", hint: "Optional — adds a Details ↗ link" },
+];
+
+function ExhibitionPanel({ onStatus, note }) {
+  const [ex, setEx] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const fileRef = useRef(null);
+
+  useEffect(() => {
+    lib
+      .fetchSettings()
+      .then((s) => setEx({ enabled: true, ...(s.exhibition || {}) }))
+      .catch((e) => note(e.message));
+  }, [note]);
+
+  const save = async (next, message = "Saved") => {
+    setBusy(true);
+    try {
+      await lib.updateSettings({ exhibition: next });
+      setEx(next);
+      setDirty(false);
+      onStatus(next.enabled !== false && Boolean(next.poster));
+      note(message);
+    } catch (e) {
+      note(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const replacePoster = async (file) => {
+    if (!file) return;
+    setBusy(true);
+    try {
+      const old = ex.poster;
+      const path = await lib.uploadPoster(file);
+      await save({ ...ex, poster: path }, "Poster replaced");
+      await lib.removeStoredFile(old);
+    } catch (e) {
+      note(e.message);
+      setBusy(false);
+    }
+  };
+
+  if (!ex) return <p className="label adm-hint">Loading…</p>;
+
+  const on = ex.enabled !== false;
+
+  return (
+    <>
+      <div className="adm-main__head">
+        <div>
+          <h2 className="display adm-main__title">Exhibition</h2>
+          <p className="adm-main__note">
+            The poster section between the opening screen and your albums.
+            Switching it off hides it from the site but keeps everything here
+            for next time.
+          </p>
+        </div>
+        <button
+          className={`adm-switch${on ? " is-on" : ""}`}
+          onClick={() => save({ ...ex, enabled: !on }, on ? "Exhibition hidden" : "Exhibition shown")}
+          disabled={busy}
+          aria-pressed={on ? "true" : "false"}
+        >
+          <span className="adm-switch__track"><span className="adm-switch__dot" /></span>
+          <span className="label">{on ? "Showing on site" : "Hidden"}</span>
+        </button>
+      </div>
+
+      <div className={`adm-ex${on ? "" : " is-off"}`}>
+        <div className="adm-ex__poster">
+          {ex.poster ? (
+            <img src={lib.posterUrl(ex.poster)} alt="" />
+          ) : (
+            <span className="label adm-hint">No poster yet</span>
+          )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => {
+              replacePoster(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+          <button
+            className="adm-btn"
+            onClick={() => fileRef.current?.click()}
+            disabled={busy}
+          >
+            {busy ? "Working…" : ex.poster ? "Replace poster" : "Upload poster"}
+          </button>
+        </div>
+
+        <div className="adm-ex__fields">
+          {EX_FIELDS.map((f) => (
+            <label className="adm-field" key={f.key}>
+              <span className="label">
+                {f.label} <span className="adm-ex__hint">· {f.hint}</span>
+              </span>
+              <input
+                value={ex[f.key] || ""}
+                onChange={(e) => {
+                  setEx({ ...ex, [f.key]: e.target.value });
+                  setDirty(true);
+                }}
+              />
+            </label>
+          ))}
+          <div className="adm-ex__foot">
+            <button
+              className="adm-btn adm-btn--solid"
+              onClick={() => save(ex)}
+              disabled={busy || !dirty}
+            >
+              {dirty ? "Save changes" : "Saved"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function Dashboard() {
   const [albums, setAlbums] = useState([]);
   const [photos, setPhotos] = useState([]);
@@ -382,16 +523,26 @@ function Dashboard() {
     refresh();
   }, [refresh]);
 
-  const note = (text) => {
+  const note = useCallback((text) => {
     setStatus(text);
     setTimeout(() => setStatus((s) => (s === text ? "" : s)), 2600);
-  };
+  }, []);
 
   const unfiled = photos.filter((p) => !p.album_id);
   const shown =
     selected === UNFILED ? unfiled : photos.filter((p) => p.album_id === selected);
   const album = albums.find((a) => a.id === selected) || null;
   const heroCount = photos.filter((p) => p.in_hero).length;
+  const [exhibitOn, setExhibitOn] = useState(null);
+  useEffect(() => {
+    lib
+      .fetchSettings()
+      .then((s) => {
+        const e = s.exhibition || {};
+        setExhibitOn(e.enabled !== false && Boolean(e.poster));
+      })
+      .catch(() => {});
+  }, []);
 
   const toggleHero = async (p) => {
     const next = !p.in_hero;
@@ -580,6 +731,15 @@ function Dashboard() {
                 <span className="adm-album__n label">{heroCount || "all"}</span>
               </button>
             </li>
+            <li className={`adm-album${selected === EXHIBIT ? " is-active" : ""}`}>
+              <button className="adm-album__main" onClick={() => setSelected(EXHIBIT)}>
+                <span className="adm-album__pos label">◆</span>
+                <span className="adm-album__title">Exhibition</span>
+                <span className="adm-album__n label">
+                  {exhibitOn === null ? "" : exhibitOn ? "on" : "off"}
+                </span>
+              </button>
+            </li>
           </ul>
 
           <div className="adm-side__head">
@@ -657,7 +817,9 @@ function Dashboard() {
 
         {/* ---- photos ---- */}
         <main className="adm-main">
-          {selected === HERO ? (
+          {selected === EXHIBIT ? (
+            <ExhibitionPanel onStatus={setExhibitOn} note={note} />
+          ) : selected === HERO ? (
             <HeroPicker
               albums={albums}
               photos={photos}

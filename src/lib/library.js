@@ -181,6 +181,31 @@ export async function uploadOne(file, { albumId, caption, position, onStage }) {
   return data;
 }
 
+/* ----- exhibition poster ----- */
+
+/** Resize and upload a new poster; returns its storage path. */
+export async function uploadPoster(file) {
+  const made = await prepare(file);
+  const key = `exhibition/${storageKey(slugify(made.originalName), "poster", made.ext)}`;
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(key, made.full, { contentType: made.mime, cacheControl: "31536000" });
+  if (error) throw new Error(error.message);
+  return key;
+}
+
+/** Delete a file from storage — but never one that ships with the site. */
+export async function removeStoredFile(path) {
+  if (!path || path.startsWith("/") || /^https?:\/\//.test(path)) return;
+  await supabase.storage.from(BUCKET).remove([path]);
+}
+
+/** Where to load a poster from, whichever kind of path it is. */
+export function posterUrl(path) {
+  if (!path) return "";
+  return /^https?:\/\//.test(path) || path.startsWith("/") ? path : publicUrl(path);
+}
+
 /* ----- settings ----- */
 
 export async function fetchSettings() {

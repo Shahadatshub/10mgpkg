@@ -104,9 +104,13 @@ export async function loadGallery({ fresh = false } = {}) {
   };
 
   const ex = s.exhibition && typeof s.exhibition === "object" ? s.exhibition : {};
-  const exhibition = ex.poster
-    ? { ...ex, poster: ex.poster.startsWith("http") ? ex.poster : publicUrl(ex.poster) }
-    : null;
+  // A poster path starting with "/" is a file shipped with the site (in
+  // public/); a full URL is used as is; anything else was uploaded from the
+  // dashboard and lives in Supabase storage.
+  const posterUrl = (p) =>
+    !p ? "" : /^https?:\/\//.test(p) || p.startsWith("/") ? p : publicUrl(p);
+  const exhibition =
+    ex.poster && ex.enabled !== false ? { ...ex, poster: posterUrl(ex.poster) } : null;
 
   cache = {
     photos: allPhotos,
